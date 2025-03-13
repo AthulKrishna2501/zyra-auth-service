@@ -1,0 +1,4 @@
+[submodule "proto"]
+	path = proto
+	url = https://github.com/AthulKrishna2501/proto-repo.git
+	branch = main
