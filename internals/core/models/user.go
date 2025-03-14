@@ -30,19 +30,5 @@ type UserDetails struct {
 	User User `gorm:"foreignKey:UserID;references:UserID;constraint:OnDelete:CASCADE"`
 }
 
-type SignUpInput struct {
-	Name     string `json:"name" binding:"required"`
-	Email    string `json:"email" binding:"required"`
-	Password string `json:"password" binding:"required"`
-	Role     string `json:"role" binding:"required"`
-}
 
-type LoginRequestBody struct {
-	Email    string `json:"email" binding:"required"`
-	Role     string `json:"role" binding:"required"`
-	Password string `json:"password" binding:"required"`
-}
 
-type RegisterResponse struct {
-	
-}

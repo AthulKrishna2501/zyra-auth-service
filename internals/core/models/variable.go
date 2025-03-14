@@ -3,12 +3,13 @@ package models
 import "errors"
 
 var (
-	ErrUserAlreadyExists = errors.New("User already exists")
-	ErrInvalidInput      = errors.New("invalid input")
-	ErrUserBlocked       = errors.New("User is blocked")
-	ErrInvalidID         = errors.New("invalid ID")
-	ErrUserDoesNotExist  = errors.New("user does not exists")
-	ErrOTPExpiredORInvalid = errors.New("otp expired or invalid")
+	ErrUserAlreadyExists      = errors.New("User already exists")
+	ErrInvalidInput           = errors.New("invalid input")
+	ErrUserBlocked            = errors.New("User is blocked")
+	ErrInvalidID              = errors.New("invalid ID")
+	ErrUserDoesNotExist       = errors.New("user does not exists")
+	ErrOTPExpiredORInvalid    = errors.New("otp expired or invalid")
+	ErrInvalidEmailOrPassword = errors.New("invalid email or password")
 )
 
 const (
