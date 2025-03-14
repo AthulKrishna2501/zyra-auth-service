@@ -8,6 +8,7 @@ var (
 	ErrUserBlocked       = errors.New("User is blocked")
 	ErrInvalidID         = errors.New("invalid ID")
 	ErrUserDoesNotExist  = errors.New("user does not exists")
+	ErrOTPExpiredORInvalid = errors.New("otp expired or invalid")
 )
 
 const (

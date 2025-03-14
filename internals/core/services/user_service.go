@@ -2,33 +2,63 @@ package services
 
 import (
 	"context"
+	"log"
+	"math/rand"
 	"net/http"
+	"strconv"
+	"time"
 
-	"github.com/AthulKrishna2501/proto-repo/auth"
 	pb "github.com/AthulKrishna2501/proto-repo/auth"
+	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/events"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/models"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/repository"
+	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
+var redisClient = redis.NewClient(&redis.Options{
+	Addr:     "localhost:6379",
+	Password: "",
+	DB:       0,
+})
+
 type AuthService struct {
-	auth.UnimplementedAuthServiceServer
-	userRepo repository.UserRepository
+	pb.UnimplementedAuthServiceServer
+	userRepo    repository.UserRepository
+	redisClient *redis.Client
+	rabbitMq    *events.RabbitMq
 }
 
-func NewAuthService(userRepo repository.UserRepository) *AuthService {
-	return &AuthService{userRepo: userRepo}
+func NewAuthService(userRepo repository.UserRepository, rabbitMq *events.RabbitMq) *AuthService {
+	return &AuthService{userRepo: userRepo, redisClient: redisClient, rabbitMq: rabbitMq}
 }
 
-func (s *AuthService) SignUp(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
+func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 	exists, _ := s.userRepo.FindUserByEmail(req.Email)
 	if exists != nil {
-		return nil, models.ErrUserDoesNotExist
+		return nil, status.Errorf(codes.AlreadyExists, "User aldready exists")
 	}
+
+	userID := uuid.New()
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
+	userDetails := &models.UserDetails{
+		ID:        uuid.New(),
+		UserID:    userID,
+		FirstName: req.Name,
+	}
+
+	if err := s.userRepo.CreateUserDetails(userDetails); err != nil {
+		return nil, err
+	}
+
 	newUser := &models.User{
+		ID:        userID,
+		UserID:    userID,
 		Email:     req.Email,
 		Password:  string(hashedPassword),
 		Role:      req.Role,
@@ -39,25 +69,51 @@ func (s *AuthService) SignUp(ctx context.Context, req *pb.RegisterRequest) (*pb.
 		return nil, err
 	}
 
+	source := rand.NewSource(time.Now().UnixNano())
+	rng := rand.New(source)
+
+	otp := rng.Intn(900000) + 100000
+	otpStr := strconv.Itoa(otp)
+
+	err := s.redisClient.Set(context.Background(), req.Email, otpStr, 5*time.Minute).Err()
+	if err != nil {
+		return nil, status.Error(codes.Aborted, "Unable to store otp in redis")
+	}
+
+	err = s.rabbitMq.PublishOTP(req.Email, otpStr)
+	if err != nil {
+		log.Println("Failed to Publish OTP ", err)
+	} else {
+		log.Printf("OTP %s published for email %s", otpStr, req.Email)
+	}
+
 	return &pb.RegisterResponse{
 		Status:  http.StatusCreated,
 		Message: "User Signup Successfull",
 	}, nil
 }
 
-// func (s *AuthService) Login(ctx context.Context, req *auth.LoginRequest) (*auth.LoginResponse, error) {
-// 	user, err := s.userRepo.FindUserByEmail(req.Email)
-// 	if err != nil {
-// 		return nil, errors.New("user does not exist")
-// 	}
+func (s *AuthService) Verify(ctx context.Context, req *pb.VerifyOTPRequest) (*pb.VerifyOTPResponse, error) {
+	storedOTP, err := s.redisClient.Get(context.Background(), req.Email).Result()
+	if err == redis.Nil {
+		return nil, status.Error(codes.InvalidArgument, "Cannot get OTP from redis")
+	} else if err != nil {
+		return nil, status.Error(codes.Internal, "server error")
+	}
 
-// 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
-// 		return nil, errors.New("invalid password")
-// 	}
+	if storedOTP != req.Otp {
+		return nil, status.Error(codes.Unauthenticated, models.ErrOTPExpiredORInvalid.Error())
+	}
 
-// 	return &auth.LoginResponse{
-// 		UserId:   user.ID.String(),
-// 		Username: user.UserName,
-// 		Email:    user.Email,
-// 	}, nil
-// }
+	s.redisClient.Del(context.Background(), req.Email)
+
+	if err := s.userRepo.UpdateField(req.Email, "is_email_verified", true); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to update fields")
+	}
+
+	return &pb.VerifyOTPResponse{
+		Status:  http.StatusOK,
+		Message: "OTP verified successfully",
+	}, nil
+}
+

@@ -12,6 +12,7 @@ type Config struct {
 	JWT_SECRET_KEY string `mapstructure:"JWT_SECRET_KEY"`
 	EMAIL_ADDRES   string `mapstructure:"EMAIL_ADDRES"`
 	EMAIL_PASSWORD string `mapstructure:"EMAIL_PASSWORD"`
+	RABBITMQ_URL string `mapstructure:"RABBITMQ_URL"`
 }
 
 func LoadConfig() (cfg Config, err error) {
