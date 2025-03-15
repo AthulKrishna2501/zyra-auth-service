@@ -3,9 +3,7 @@ package services
 import (
 	"context"
 	"log"
-	"math/rand"
 	"net/http"
-	"strconv"
 	"time"
 
 	pb "github.com/AthulKrishna2501/proto-repo/auth"
@@ -71,11 +69,7 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, err
 	}
 
-	source := rand.NewSource(time.Now().UnixNano())
-	rng := rand.New(source)
-
-	otp := rng.Intn(900000) + 100000
-	otpStr := strconv.Itoa(otp)
+	otpStr := utils.GenerateOTP()
 
 	hashedEmail := utils.HashSHA256(req.Email)
 	hashedOTP := utils.HashSHA256(otpStr)
@@ -122,8 +116,36 @@ func (s *AuthService) Verify(ctx context.Context, req *pb.VerifyOTPRequest) (*pb
 	}, nil
 }
 
-func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+func (s *AuthService) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (*pb.ResendOTPResponse, error) {
+	hashedEmail := utils.HashSHA256(req.Email)
 
+	existingOTP, err := s.redisClient.Get(context.Background(), hashedEmail).Result()
+	if err == nil && existingOTP != "" {
+		return nil, status.Error(codes.FailedPrecondition, "Previous OTP is still valid, please wait for expiration")
+	}
+
+	otpStr := utils.GenerateOTP()
+	hashedOTP := utils.HashSHA256(otpStr)
+
+	err = s.redisClient.Set(context.Background(), hashedEmail, hashedOTP, 5*time.Minute).Err()
+	if err != nil {
+		return nil, status.Error(codes.Aborted, "Unable to store otp in redis")
+	}
+
+	err = s.rabbitMq.PublishOTP(req.Email, otpStr)
+	if err != nil {
+		log.Println("Failed to Publish OTP ", err)
+	} else {
+		log.Printf("OTP %s published for email %s", otpStr, req.Email)
+	}
+
+	return &pb.ResendOTPResponse{
+		Status:  http.StatusOK,
+		Message: "OTP send successfull",
+	}, nil
+}
+
+func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
 	user, err := s.userRepo.FindUserByEmail(req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, models.ErrInvalidEmailOrPassword.Error())

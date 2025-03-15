@@ -1,5 +1,7 @@
 github.com/AthulKrishna2501/proto-repo v0.0.0-20250314100641-7befe45e36c2 h1:9rdm9zR0zcjlCVNsevq12pFNtP/qJrc94gE+jLiKTtA=
 github.com/AthulKrishna2501/proto-repo v0.0.0-20250314100641-7befe45e36c2/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
+github.com/AthulKrishna2501/proto-repo v0.0.0-20250315035557-194d2bad317a h1:P2k50h0E3MEcFzsIF8talMwYyTVpBDL5iRW87FsbBmw=
+github.com/AthulKrishna2501/proto-repo v0.0.0-20250315035557-194d2bad317a/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=
