@@ -69,14 +69,29 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, err
 	}
 
+	return &pb.RegisterResponse{
+		Status:  http.StatusCreated,
+		Message: "User Signup Successfull",
+	}, nil
+}
+
+func (s *AuthService) SendOTP(ctx context.Context, req *pb.OTPRequest) (*pb.OTPResponse, error) {
+	limited, err := utils.IsOTPLimited(redisClient, req.Email)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Server error while checking rate limit")
+	}
+
+	if limited {
+		return nil, status.Error(codes.ResourceExhausted, "Too many OTP requests. Please wait a minute and try again.")
+	}
 	otpStr := utils.GenerateOTP()
 
 	hashedEmail := utils.HashSHA256(req.Email)
 	hashedOTP := utils.HashSHA256(otpStr)
 
-	err := s.redisClient.Set(context.Background(), hashedEmail, hashedOTP, 5*time.Minute).Err()
+	err = s.redisClient.Set(context.Background(), hashedEmail, hashedOTP, 5*time.Minute).Err()
 	if err != nil {
-		return nil, status.Error(codes.Aborted, "Unable to store otp in redis")
+		return nil, status.Error(codes.Internal, "Unable to store otp in redis")
 	}
 
 	err = s.rabbitMq.PublishOTP(req.Email, otpStr)
@@ -86,25 +101,28 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		log.Printf("OTP %s published for email %s", otpStr, req.Email)
 	}
 
-	return &pb.RegisterResponse{
-		Status:  http.StatusCreated,
-		Message: "User Signup Successfull",
+	return &pb.OTPResponse{
+		Status:  http.StatusOK,
+		Message: "OTP has been sent to your email. Please check your inbox.",
 	}, nil
 }
 
 func (s *AuthService) Verify(ctx context.Context, req *pb.VerifyOTPRequest) (*pb.VerifyOTPResponse, error) {
-	storedOTP, err := s.redisClient.Get(context.Background(), req.Email).Result()
+
+	hashedEmail := utils.HashSHA256(req.Email)
+	hashedOtp := utils.HashSHA256(req.Otp)
+	storedOTP, err := s.redisClient.Get(context.Background(), hashedEmail).Result()
 	if err == redis.Nil {
 		return nil, status.Error(codes.InvalidArgument, "Cannot get OTP from redis")
 	} else if err != nil {
 		return nil, status.Error(codes.Internal, "server error")
 	}
 
-	if storedOTP != req.Otp {
+	if storedOTP != hashedOtp {
 		return nil, status.Error(codes.Unauthenticated, models.ErrOTPExpiredORInvalid.Error())
 	}
 
-	s.redisClient.Del(context.Background(), req.Email)
+	s.redisClient.Del(context.Background(), hashedEmail)
 
 	if err := s.userRepo.UpdateField(req.Email, "is_email_verified", true); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update fields")
@@ -117,6 +135,14 @@ func (s *AuthService) Verify(ctx context.Context, req *pb.VerifyOTPRequest) (*pb
 }
 
 func (s *AuthService) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (*pb.ResendOTPResponse, error) {
+	user, err := s.userRepo.FindUserByEmail(req.Email)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "cannot find user")
+	}
+
+	if user.IsEmailVerified {
+		return nil, status.Error(codes.AlreadyExists, "User is already verified")
+	}
 	hashedEmail := utils.HashSHA256(req.Email)
 
 	existingOTP, err := s.redisClient.Get(context.Background(), hashedEmail).Result()
@@ -149,6 +175,9 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 	user, err := s.userRepo.FindUserByEmail(req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, models.ErrInvalidEmailOrPassword.Error())
+	}
+	if !user.IsEmailVerified {
+		return nil, status.Error(codes.Unauthenticated, "Please verify your email before logging in")
 	}
 
 	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password)); err != nil {
