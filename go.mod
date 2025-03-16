@@ -3,8 +3,9 @@ module github.com/AthulKrishna2501/zyra-auth-service
 go 1.24.1
 
 require (
-	github.com/AthulKrishna2501/proto-repo v0.0.0-20250315035557-194d2bad317a
+	github.com/AthulKrishna2501/proto-repo v0.0.0-20250316112756-ee18ece06a15
 	github.com/gin-gonic/gin v1.10.0
+	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
 	github.com/rabbitmq/amqp091-go v1.10.0

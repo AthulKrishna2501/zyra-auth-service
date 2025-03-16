@@ -12,6 +12,7 @@ import (
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/utils"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/models"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/repository"
+	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
@@ -205,4 +206,55 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 		Message:      models.MsgLoginSuccessful,
 	}, nil
 
+}
+
+func (s *AuthService) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.LogoutResponse, error) {
+	tokenString := req.AccessToken
+
+	token, err := middleware.ValidateToken(tokenString, middleware.AccessTokenSecret)
+
+	if err != nil {
+
+		return nil, status.Errorf(codes.Unauthenticated, "Invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok || !token.Valid {
+		return nil, status.Errorf(codes.Unauthenticated, "Invalid token claims")
+	}
+
+	expiryTime := int64(claims["exp"].(float64))
+
+	err = middleware.BlacklistToken(tokenString, expiryTime, redisClient)
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to blacklist token")
+	}
+
+	return &pb.LogoutResponse{
+		Message: models.MsgLogoutSuccessful,
+	}, nil
+
+}
+func (s *AuthService) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {
+	token, err := middleware.ValidateToken(req.RefreshToken, middleware.RefreshTokenSecret)
+	if err != nil || !token.Valid {
+		return nil, status.Errorf(codes.Unauthenticated, "Invalid refresh token")
+	}
+
+	claims, _ := token.Claims.(jwt.MapClaims)
+	userID := claims["user_id"].(string)
+
+	storedToken, err := s.redisClient.Get(ctx, userID).Result()
+	if err == redis.Nil || storedToken != req.RefreshToken {
+		return nil, status.Errorf(codes.Unauthenticated, "Invalid or expired refresh token")
+	}
+
+	newAccessToken, _, err := middleware.GenerateTokens(userID, "user")
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to generate new access token")
+	}
+
+	return &pb.RefreshTokenResponse{
+		AccessToken: newAccessToken,
+	}, nil
 }

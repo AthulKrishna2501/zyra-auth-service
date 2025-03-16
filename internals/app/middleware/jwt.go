@@ -1,13 +1,16 @@
 package middleware
 
 import (
+	"context"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
 )
 
-var accessTokenSecret = []byte("your-access-secret-key")
-var refreshTokenSecret = []byte("your-refresh-secret-key")
+var AccessTokenSecret = []byte("your-access-secret-key")
+var RefreshTokenSecret = []byte("your-refresh-secret-key")
+var ctx = context.Background()
 
 func GenerateTokens(userID string, role string) (string, string, error) {
 	accessClaims := jwt.MapClaims{
@@ -16,7 +19,7 @@ func GenerateTokens(userID string, role string) (string, string, error) {
 		"exp":     time.Now().Add(15 * time.Minute).Unix(),
 	}
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
-	accessTokenString, err := accessToken.SignedString(accessTokenSecret)
+	accessTokenString, err := accessToken.SignedString(AccessTokenSecret)
 	if err != nil {
 		return "", "", err
 	}
@@ -26,14 +29,13 @@ func GenerateTokens(userID string, role string) (string, string, error) {
 		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
-	refreshTokenString, err := refreshToken.SignedString(refreshTokenSecret)
+	refreshTokenString, err := refreshToken.SignedString(RefreshTokenSecret)
 	if err != nil {
 		return "", "", err
 	}
 
 	return accessTokenString, refreshTokenString, nil
 }
-
 
 func ValidateToken(tokenString string, secretKey []byte) (*jwt.Token, error) {
 	return jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
@@ -42,4 +44,9 @@ func ValidateToken(tokenString string, secretKey []byte) (*jwt.Token, error) {
 		}
 		return secretKey, nil
 	})
+}
+
+func BlacklistToken(tokenString string, expiryTime int64, redisClient *redis.Client) error {
+	err := redisClient.Set(ctx, tokenString, "blacklisted", time.Until(time.Unix(expiryTime, 0))).Err()
+	return err
 }

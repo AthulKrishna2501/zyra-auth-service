@@ -1,7 +1,7 @@
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250314100641-7befe45e36c2 h1:9rdm9zR0zcjlCVNsevq12pFNtP/qJrc94gE+jLiKTtA=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250314100641-7befe45e36c2/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250315035557-194d2bad317a h1:P2k50h0E3MEcFzsIF8talMwYyTVpBDL5iRW87FsbBmw=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250315035557-194d2bad317a/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
+github.com/AthulKrishna2501/proto-repo v0.0.0-20250315072327-e78ed624628e h1:1njTKjtFQ1QAjiZqj3yhiTyLPSA09SxtIgOQVsCludA=
+github.com/AthulKrishna2501/proto-repo v0.0.0-20250315072327-e78ed624628e/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
+github.com/AthulKrishna2501/proto-repo v0.0.0-20250316112756-ee18ece06a15 h1:gv1Ft/MEXv9QUoQEHTu0ev2GLbL4ja1o5NDyKwZReLU=
+github.com/AthulKrishna2501/proto-repo v0.0.0-20250316112756-ee18ece06a15/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
 github.com/bsm/ginkgo/v2 v2.12.0/go.mod h1:SwYbGRRDovPVboqFv0tPTcG1sN61LM1Z4ARdbAV9g4c=
 github.com/bsm/gomega v1.27.10 h1:yeMWxP2pV2fG3FgAODIY8EiRE3dy0aeFYt4l7wh6yKA=
@@ -46,6 +46,8 @@ github.com/go-playground/validator/v10 v10.20.0 h1:K9ISHbSaI0lyB2eWMPJo+kOS/FBEx
 github.com/go-playground/validator/v10 v10.20.0/go.mod h1:dbuPbCMFw/DrkbEynArYaCwl3amGuJotoKCe95atGMM=
 github.com/goccy/go-json v0.10.2 h1:CrxCmQqYDkv1z7lO7Wbh2HN93uovUHgrECaO5ZrCXAU=
 github.com/goccy/go-json v0.10.2/go.mod h1:6MelG93GURQebXPDq3khkgXZkazVtN9CRI+MGFi0w8I=
+github.com/golang-jwt/jwt v3.2.2+incompatible h1:IfV12K8xAKAnZqdXVzCZ+TOjboZ2keLg81eXfW3O+oY=
+github.com/golang-jwt/jwt v3.2.2+incompatible/go.mod h1:8pz2t5EyA70fFQQSrl6XZXzqecmYZeUEB8OUGHkxJ+I=
 github.com/golang-jwt/jwt/v5 v5.2.1 h1:OuVbFODueb089Lh128TAcimifWaLhJwVflnrgM17wHk=
 github.com/golang-jwt/jwt/v5 v5.2.1/go.mod h1:pqrtFR0X4osieyHYxtmOUWsAWrfe1Q5UVIyoH402zdk=
 github.com/golang/protobuf v1.5.4 h1:i7eJL8qZTpSEXOPTxNKhASYpMn+8e5Q6AdndVa1dWek=
