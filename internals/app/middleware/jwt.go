@@ -2,6 +2,7 @@ package middleware
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -26,6 +27,7 @@ func GenerateTokens(userID string, role string) (string, string, error) {
 
 	refreshClaims := jwt.MapClaims{
 		"user_id": userID,
+		"role":    role,
 		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
 	refreshToken := jwt.NewWithClaims(jwt.SigningMethodHS256, refreshClaims)
@@ -47,6 +49,19 @@ func ValidateToken(tokenString string, secretKey []byte) (*jwt.Token, error) {
 }
 
 func BlacklistToken(tokenString string, expiryTime int64, redisClient *redis.Client) error {
-	err := redisClient.Set(ctx, tokenString, "blacklisted", time.Until(time.Unix(expiryTime, 0))).Err()
-	return err
+	ctx := context.Background()
+
+	duration := time.Until(time.Unix(expiryTime, 0))
+	if duration <= 0 {
+		duration = time.Minute 
+	}
+
+	err := redisClient.Set(ctx, "blacklist:"+tokenString, "revoked", duration).Err()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("Token blacklisted successfully:", tokenString)
+	return nil
+
 }

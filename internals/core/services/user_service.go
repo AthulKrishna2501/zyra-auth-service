@@ -4,9 +4,11 @@ import (
 	"context"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	pb "github.com/AthulKrishna2501/proto-repo/auth"
+	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/config"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/events"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/middleware"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/utils"
@@ -18,13 +20,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"gorm.io/gorm"
 )
-
-var redisClient = redis.NewClient(&redis.Options{
-	Addr:     "localhost:6379",
-	Password: "",
-	DB:       0,
-})
 
 type AuthService struct {
 	pb.UnimplementedAuthServiceServer
@@ -34,13 +31,17 @@ type AuthService struct {
 }
 
 func NewAuthService(userRepo repository.UserRepository, rabbitMq *events.RabbitMq) *AuthService {
-	return &AuthService{userRepo: userRepo, redisClient: redisClient, rabbitMq: rabbitMq}
+	return &AuthService{userRepo: userRepo, redisClient: config.RedisClient, rabbitMq: rabbitMq}
 }
 
 func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
 	exists, _ := s.userRepo.FindUserByEmail(req.Email)
 	if exists != nil {
 		return nil, status.Error(codes.AlreadyExists, models.ErrUserAlreadyExists.Error())
+	}
+
+	if req.Role != "vendor" && req.Role != "client" {
+		return nil, status.Error(codes.Unauthenticated, models.ErrInvalidRole.Error())
 	}
 
 	userID := uuid.New()
@@ -77,7 +78,12 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 }
 
 func (s *AuthService) SendOTP(ctx context.Context, req *pb.OTPRequest) (*pb.OTPResponse, error) {
-	limited, err := utils.IsOTPLimited(redisClient, req.Email)
+	_, err := s.userRepo.FindUserByEmail(req.Email)
+	if err != nil && err != gorm.ErrRecordNotFound {
+		return nil, status.Error(codes.Unauthenticated, models.ErrInvalidEmail.Error())
+	}
+
+	limited, err := utils.IsOTPLimited(s.redisClient, req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Server error while checking rate limit")
 	}
@@ -88,9 +94,8 @@ func (s *AuthService) SendOTP(ctx context.Context, req *pb.OTPRequest) (*pb.OTPR
 	otpStr := utils.GenerateOTP()
 
 	hashedEmail := utils.HashSHA256(req.Email)
-	hashedOTP := utils.HashSHA256(otpStr)
 
-	err = s.redisClient.Set(context.Background(), hashedEmail, hashedOTP, 5*time.Minute).Err()
+	err = s.redisClient.Set(context.Background(), hashedEmail, otpStr, 5*time.Minute).Err()
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Unable to store otp in redis")
 	}
@@ -111,15 +116,14 @@ func (s *AuthService) SendOTP(ctx context.Context, req *pb.OTPRequest) (*pb.OTPR
 func (s *AuthService) Verify(ctx context.Context, req *pb.VerifyOTPRequest) (*pb.VerifyOTPResponse, error) {
 
 	hashedEmail := utils.HashSHA256(req.Email)
-	hashedOtp := utils.HashSHA256(req.Otp)
 	storedOTP, err := s.redisClient.Get(context.Background(), hashedEmail).Result()
 	if err == redis.Nil {
-		return nil, status.Error(codes.InvalidArgument, "Cannot get OTP from redis")
+		return nil, status.Error(codes.Unauthenticated, "OTP expired or invalid")
 	} else if err != nil {
 		return nil, status.Error(codes.Internal, "server error")
 	}
 
-	if storedOTP != hashedOtp {
+	if storedOTP != req.Otp {
 		return nil, status.Error(codes.Unauthenticated, models.ErrOTPExpiredORInvalid.Error())
 	}
 
@@ -152,9 +156,8 @@ func (s *AuthService) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (
 	}
 
 	otpStr := utils.GenerateOTP()
-	hashedOTP := utils.HashSHA256(otpStr)
 
-	err = s.redisClient.Set(context.Background(), hashedEmail, hashedOTP, 5*time.Minute).Err()
+	err = s.redisClient.Set(context.Background(), hashedEmail, otpStr, 5*time.Minute).Err()
 	if err != nil {
 		return nil, status.Error(codes.Aborted, "Unable to store otp in redis")
 	}
@@ -173,9 +176,38 @@ func (s *AuthService) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (
 }
 
 func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	adminPassword := os.Getenv("ADMIN_PASSWORD")
+
+	if req.Email == adminEmail && req.Role == "admin" {
+		if req.Password != adminPassword {
+			return nil, status.Error(codes.Unauthenticated, "Invalid email or password")
+		}
+
+		accessToken, refreshToken, err := middleware.GenerateTokens("admin_id", "admin")
+		if err != nil {
+			return nil, status.Errorf(codes.Internal, "Failed to generate tokens")
+		}
+
+		return &pb.LoginResponse{
+			AccessToken:  accessToken,
+			RefreshToken: refreshToken,
+			Status:       http.StatusOK,
+			Message:      models.MsgLoginSuccessful,
+		}, nil
+	}
+	
 	user, err := s.userRepo.FindUserByEmail(req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, models.ErrInvalidEmailOrPassword.Error())
+	}
+
+	isBlocked, err := s.redisClient.SIsMember(ctx, "blocked_users", user.ID.String()).Result()
+	if err != nil {
+		return nil, status.Errorf(codes.Internal, "Failed to check block status")
+	}
+	if isBlocked {
+		return nil, status.Error(codes.PermissionDenied, "Your account has been blocked. Contact support.")
 	}
 	if !user.IsEmailVerified {
 		return nil, status.Error(codes.Unauthenticated, "Please verify your email before logging in")
@@ -225,7 +257,7 @@ func (s *AuthService) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.Lo
 
 	expiryTime := int64(claims["exp"].(float64))
 
-	err = middleware.BlacklistToken(tokenString, expiryTime, redisClient)
+	err = middleware.BlacklistToken(tokenString, expiryTime, s.redisClient)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to blacklist token")
 	}

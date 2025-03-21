@@ -10,6 +10,8 @@ var (
 	ErrUserDoesNotExist       = errors.New("user does not exists")
 	ErrOTPExpiredORInvalid    = errors.New("otp expired or invalid")
 	ErrInvalidEmailOrPassword = errors.New("invalid email or password")
+	ErrInvalidRole            = errors.New("invalid role")
+	ErrInvalidEmail = errors.New("invalid email")
 )
 
 const (

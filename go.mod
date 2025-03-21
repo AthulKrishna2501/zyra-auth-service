@@ -5,9 +5,9 @@ go 1.24.1
 require (
 	github.com/AthulKrishna2501/proto-repo v0.0.0-20250316112756-ee18ece06a15
 	github.com/gin-gonic/gin v1.10.0
-	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
+	github.com/joho/godotenv v1.5.1
 	github.com/rabbitmq/amqp091-go v1.10.0
 	github.com/redis/go-redis/v9 v9.7.1
 	github.com/sirupsen/logrus v1.9.3
