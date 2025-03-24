@@ -2,6 +2,9 @@ package services
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -18,6 +21,8 @@ import (
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
+	"golang.org/x/oauth2"
+	"golang.org/x/oauth2/google"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"gorm.io/gorm"
@@ -28,6 +33,7 @@ type AuthService struct {
 	userRepo    repository.UserRepository
 	redisClient *redis.Client
 	rabbitMq    *events.RabbitMq
+	Oauth       *oauth2.Config
 }
 
 func NewAuthService(userRepo repository.UserRepository, rabbitMq *events.RabbitMq) *AuthService {
@@ -196,7 +202,7 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 			Message:      models.MsgLoginSuccessful,
 		}, nil
 	}
-	
+
 	user, err := s.userRepo.FindUserByEmail(req.Email)
 	if err != nil {
 		return nil, status.Error(codes.Unauthenticated, models.ErrInvalidEmailOrPassword.Error())
@@ -237,6 +243,108 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 		Status:       http.StatusOK,
 		Message:      models.MsgLoginSuccessful,
 	}, nil
+}
+
+func (s *AuthService) GoogleLogin(ctx context.Context, req *pb.GoogleLoginRequest) (*pb.GoogleLoginResponse, error) {
+	s.Oauth = &oauth2.Config{
+		RedirectURL:  "http://localhost:3000/auth/callback",
+		ClientID:     os.Getenv("OAUTH_ID"),
+		ClientSecret: os.Getenv("OAUTH_SECRET"),
+		Scopes:       []string{"email", "profile"},
+		Endpoint:     google.Endpoint,
+	}
+
+	url := s.Oauth.AuthCodeURL("state", oauth2.AccessTypeOffline)
+
+	return &pb.GoogleLoginResponse{
+		Status: http.StatusOK,
+		Url:    url,
+	}, nil
+
+}
+
+func (s *AuthService) HandleGoogleCallback(c context.Context, req *pb.GoogleCallbackRequest) (*pb.GoogleCallbackResponse, error) {
+	client := &http.Client{}
+
+	if s.Oauth == nil {
+		log.Println("OAuth config is nil!")
+		return nil, status.Error(codes.Internal, "OAuth config not initialized")
+	}
+
+	t, err := s.Oauth.Exchange(context.Background(), req.Code)
+
+	log.Print("Request Code", req.Code)
+
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to exchange token")
+
+	}
+
+	httpReq, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to get user info "+err.Error())
+	}
+
+	httpReq.Header.Set("Authorization", "Bearer "+t.AccessToken)
+
+	resp, err := client.Do(httpReq)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to fetch user info: "+err.Error())
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to read response")
+
+	}
+
+	var userInfo struct {
+		ID    string `json:"id"`
+		Email string `json:"email"`
+		Name  string `json:"name"`
+	}
+	if err := json.Unmarshal(body, &userInfo); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to parse user info: "+err.Error())
+	}
+
+	user, err := s.userRepo.FindUserByEmail(userInfo.Email)
+	if err != nil && err != sql.ErrNoRows {
+		return nil, status.Error(codes.Internal, "Failed to check user: "+err.Error())
+	}
+
+	if err := s.userRepo.UpdateField(user.Email, "sso_provider", "Google"); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to update field for SSO")
+	}
+
+	if user == nil {
+		newUser := models.User{
+			Email:       userInfo.Email,
+			SSOProvider: "Google",
+			SSOUserID:   userInfo.ID,
+			Role:        "client",
+		}
+		if err := s.userRepo.CreateUser(&newUser); err != nil {
+			return nil, status.Error(codes.Internal, "Failed to create user: "+err.Error())
+		}
+	}
+
+	if err := s.userRepo.UpdateField(userInfo.Email, "sso_provider", "Google"); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to update SSO field")
+	}
+
+	accessToken, refreshToken, err := middleware.GenerateTokens(user.ID.String(), user.Role)
+
+	if err!=nil{
+		return nil,status.Error(codes.Internal,"Failed to generate JWT Token")
+	}
+
+	return &pb.GoogleCallbackResponse{
+		Message:      "User Login Successfull",
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+	}, nil
 
 }
 
@@ -267,6 +375,7 @@ func (s *AuthService) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.Lo
 	}, nil
 
 }
+
 func (s *AuthService) RefreshToken(ctx context.Context, req *pb.RefreshTokenRequest) (*pb.RefreshTokenResponse, error) {
 	token, err := middleware.ValidateToken(req.RefreshToken, middleware.RefreshTokenSecret)
 	if err != nil || !token.Valid {

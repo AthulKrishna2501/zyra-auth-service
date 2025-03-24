@@ -7,15 +7,17 @@ import (
 )
 
 type User struct {
-	ID            uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	UserID        uuid.UUID `gorm:"type:uuid;unique;not null"`
-	Email         string    `gorm:"type:varchar(255);unique;not null"`
-	Password      string    `gorm:"type:text;not null"`
-	Role          string    `gorm:"type:varchar(50);not null"`
-	IsBlocked     bool      `gorm:"default:false"`
+	ID              uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
+	UserID          uuid.UUID `gorm:"type:uuid;unique;not null"`
+	Email           string    `gorm:"type:varchar(255);unique;not null"`
+	Password        string    `gorm:"type:text;not null"`
+	Role            string    `gorm:"type:varchar(50);not null"`
+	IsBlocked       bool      `gorm:"default:false"`
 	IsEmailVerified bool      `gorm:"default:false"`
-	CreatedAt     time.Time `gorm:"default:now()"`
-	UpdatedAt     time.Time `gorm:"default:now()"`
+	SSOProvider     string    `gorm:"type:varchar(255)"`
+	SSOUserID       string    `gorm:"type:varchar(255)"`
+	CreatedAt       time.Time `gorm:"default:now()"`
+	UpdatedAt       time.Time `gorm:"default:now()"`
 }
 
 type UserDetails struct {
@@ -29,6 +31,3 @@ type UserDetails struct {
 
 	User User `gorm:"foreignKey:UserID;references:UserID;constraint:OnDelete:CASCADE"`
 }
-
-
-

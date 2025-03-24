@@ -15,6 +15,8 @@ type Config struct {
 	EMAIL_ADDRES   string `mapstructure:"EMAIL_ADDRES"`
 	EMAIL_PASSWORD string `mapstructure:"EMAIL_PASSWORD"`
 	RABBITMQ_URL   string `mapstructure:"RABBITMQ_URL"`
+	OAUTH_ID      string `mapstructure:"OAUTH_ID  "`
+	OAUTH_SECRET  string `mapstructure:"OAUTH_SECRET"`
 }
 
 func LoadConfig() (cfg Config, err error) {
@@ -46,7 +48,7 @@ func LoadConfig() (cfg Config, err error) {
 	return
 }
 
-func LoadEnv(){
+func LoadEnv() {
 	rootDir, err := filepath.Abs("../")
 	if err != nil {
 		log.Fatal("Error getting root directory:", err)

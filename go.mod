@@ -3,7 +3,7 @@ module github.com/AthulKrishna2501/zyra-auth-service
 go 1.24.1
 
 require (
-	github.com/AthulKrishna2501/proto-repo v0.0.0-20250316112756-ee18ece06a15
+	github.com/AthulKrishna2501/proto-repo v0.0.0-20250322103942-7b9e83f28b15
 	github.com/gin-gonic/gin v1.10.0
 	github.com/golang-jwt/jwt/v5 v5.2.1
 	github.com/google/uuid v1.6.0
@@ -13,12 +13,14 @@ require (
 	github.com/sirupsen/logrus v1.9.3
 	github.com/spf13/viper v1.19.0
 	golang.org/x/crypto v0.32.0
+	golang.org/x/oauth2 v0.25.0
 	google.golang.org/grpc v1.71.0
 	gorm.io/driver/postgres v1.5.11
 	gorm.io/gorm v1.25.12
 )
 
 require (
+	cloud.google.com/go/compute/metadata v0.6.0 // indirect
 	github.com/bytedance/sonic v1.11.6 // indirect
 	github.com/bytedance/sonic/loader v0.1.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
