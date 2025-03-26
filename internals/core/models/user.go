@@ -11,11 +11,12 @@ type User struct {
 	UserID          uuid.UUID `gorm:"type:uuid;unique;not null"`
 	Email           string    `gorm:"type:varchar(255);unique;not null"`
 	Password        string    `gorm:"type:text;not null"`
-	Role            string    `gorm:"type:varchar(50);not null"`
+	Role            string    `gorm:"type:varchar(50);not null;check:role IN ('vendor', 'client', 'admin')"`
 	IsBlocked       bool      `gorm:"default:false"`
 	IsEmailVerified bool      `gorm:"default:false"`
 	SSOProvider     string    `gorm:"type:varchar(255)"`
 	SSOUserID       string    `gorm:"type:varchar(255)"`
+	Status          string    `gorm:"type:varchar(255)"`
 	CreatedAt       time.Time `gorm:"default:now()"`
 	UpdatedAt       time.Time `gorm:"default:now()"`
 }
@@ -31,3 +32,4 @@ type UserDetails struct {
 
 	User User `gorm:"foreignKey:UserID;references:UserID;constraint:OnDelete:CASCADE"`
 }
+	
