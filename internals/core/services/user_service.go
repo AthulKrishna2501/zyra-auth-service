@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/utils"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/models"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/repository"
+	"github.com/AthulKrishna2501/zyra-auth-service/internals/logger"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
@@ -34,10 +34,11 @@ type AuthService struct {
 	redisClient *redis.Client
 	rabbitMq    *events.RabbitMq
 	Oauth       *oauth2.Config
+	log         logger.Logger
 }
 
-func NewAuthService(userRepo repository.UserRepository, rabbitMq *events.RabbitMq) *AuthService {
-	return &AuthService{userRepo: userRepo, redisClient: config.RedisClient, rabbitMq: rabbitMq}
+func NewAuthService(userRepo repository.UserRepository, rabbitMq *events.RabbitMq, logger logger.Logger) *AuthService {
+	return &AuthService{userRepo: userRepo, redisClient: config.RedisClient, rabbitMq: rabbitMq, log: logger}
 }
 
 func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
@@ -50,12 +51,11 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 		return nil, status.Error(codes.Unauthenticated, models.ErrInvalidRole.Error())
 	}
 
-	userID := uuid.New()
-
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
+	userID := uuid.New()
+
 	userDetails := &models.UserDetails{
-		ID:        uuid.New(),
 		UserID:    userID,
 		FirstName: req.Name,
 	}
@@ -65,12 +65,10 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 	}
 
 	newUser := &models.User{
-		ID:        userID,
-		UserID:    userID,
-		Email:     req.Email,
-		Password:  string(hashedPassword),
-		Role:      req.Role,
-		IsBlocked: false,
+		UserID:   userID,
+		Email:    req.Email,
+		Password: string(hashedPassword),
+		Role:     req.Role,
 	}
 
 	if err := s.userRepo.CreateUser(newUser); err != nil {
@@ -108,9 +106,10 @@ func (s *AuthService) SendOTP(ctx context.Context, req *pb.OTPRequest) (*pb.OTPR
 
 	err = s.rabbitMq.PublishOTP(req.Email, otpStr)
 	if err != nil {
-		log.Println("Failed to Publish OTP ", err)
+		s.log.Error("Failed to Publish OTP: ", err)
+
 	} else {
-		log.Printf("OTP %s published for email %s", otpStr, req.Email)
+		s.log.Info("OTP %s published for email %s", otpStr, req.Email)
 	}
 
 	return &pb.OTPResponse{
@@ -137,6 +136,10 @@ func (s *AuthService) Verify(ctx context.Context, req *pb.VerifyOTPRequest) (*pb
 
 	if err := s.userRepo.UpdateField(req.Email, "is_email_verified", true); err != nil {
 		return nil, status.Error(codes.Internal, "Failed to update fields")
+	}
+
+	if err := s.userRepo.UpdateField(req.Email, "status", "pending"); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to udpated fields")
 	}
 
 	return &pb.VerifyOTPResponse{
@@ -170,9 +173,9 @@ func (s *AuthService) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (
 
 	err = s.rabbitMq.PublishOTP(req.Email, otpStr)
 	if err != nil {
-		log.Println("Failed to Publish OTP ", err)
+		s.log.Error("Failed to Publish OTP ", err)
 	} else {
-		log.Printf("OTP %s published for email %s", otpStr, req.Email)
+		s.log.Info("OTP %s published for email %s", otpStr, req.Email)
 	}
 
 	return &pb.ResendOTPResponse{
@@ -267,13 +270,10 @@ func (s *AuthService) HandleGoogleCallback(c context.Context, req *pb.GoogleCall
 	client := &http.Client{}
 
 	if s.Oauth == nil {
-		log.Println("OAuth config is nil!")
 		return nil, status.Error(codes.Internal, "OAuth config not initialized")
 	}
 
 	t, err := s.Oauth.Exchange(context.Background(), req.Code)
-
-	log.Print("Request Code", req.Code)
 
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to exchange token")
@@ -336,8 +336,8 @@ func (s *AuthService) HandleGoogleCallback(c context.Context, req *pb.GoogleCall
 
 	accessToken, refreshToken, err := middleware.GenerateTokens(user.ID.String(), user.Role)
 
-	if err!=nil{
-		return nil,status.Error(codes.Internal,"Failed to generate JWT Token")
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to generate JWT Token")
 	}
 
 	return &pb.GoogleCallbackResponse{

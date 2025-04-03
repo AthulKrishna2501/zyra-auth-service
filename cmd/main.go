@@ -45,10 +45,10 @@ func main() {
 
 	userRepo := repository.NewUserRepository(db)
 
-	err = grpc.StartgRPCServer(userRepo,log,rabbitMQ)
+	err = grpc.StartgRPCServer(userRepo, log, rabbitMQ, log)
 
-	if err!=nil{
-		log.Error("Failed to start gRPC server",err)
+	if err != nil {
+		log.Error("Failed to start gRPC server", err)
 		return
 	}
 

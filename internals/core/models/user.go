@@ -16,7 +16,7 @@ type User struct {
 	IsEmailVerified bool      `gorm:"default:false"`
 	SSOProvider     string    `gorm:"type:varchar(255)"`
 	SSOUserID       string    `gorm:"type:varchar(255)"`
-	Status          string    `gorm:"type:varchar(255)"`
+	Status          string    `gorm:"type:varchar(255);default:'pending'"`
 	CreatedAt       time.Time `gorm:"default:now()"`
 	UpdatedAt       time.Time `gorm:"default:now()"`
 }
@@ -32,4 +32,3 @@ type UserDetails struct {
 
 	User User `gorm:"foreignKey:UserID;references:UserID;constraint:OnDelete:CASCADE"`
 }
-	

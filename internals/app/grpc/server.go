@@ -11,7 +11,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabbitMQ *events.RabbitMq) error {
+func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabbitMQ *events.RabbitMq, logger logger.Logger) error {
 	go func() {
 		lis, err := net.Listen("tcp", ":5001")
 		if err != nil {
@@ -20,7 +20,7 @@ func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabb
 		}
 
 		grpcServer := grpc.NewServer()
-		authService := services.NewAuthService(UserRepo, rabbitMQ)
+		authService := services.NewAuthService(UserRepo, rabbitMQ, logger)
 		auth.RegisterAuthServiceServer(grpcServer, authService)
 
 		log.Info("gRPC Server started on port 3001")
