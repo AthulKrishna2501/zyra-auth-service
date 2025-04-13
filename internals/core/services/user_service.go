@@ -230,12 +230,13 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 		return nil, status.Error(codes.Unauthenticated, "Invalid Role")
 	}
 
-	accessToken, refreshToken, err := middleware.GenerateTokens(user.ID.String(), user.Role)
+	accessToken, refreshToken, err := middleware.GenerateTokens(user.UserID.String(), user.Role)
+	s.log.Info("UserID in GenerateToken function :", user.UserID.String())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to generate tokens")
 	}
 
-	err = s.redisClient.Set(ctx, user.ID.String(), refreshToken, 7*24*time.Hour).Err()
+	err = s.redisClient.Set(ctx, user.UserID.String(), refreshToken, 7*24*time.Hour).Err()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to store refresh token")
 	}

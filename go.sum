@@ -1,13 +1,5 @@
 cloud.google.com/go/compute/metadata v0.6.0 h1:A6hENjEsCDtC1k8byVsgwvVcioamEHvZ4j01OwKxG9I=
 cloud.google.com/go/compute/metadata v0.6.0/go.mod h1:FjyFAW1MW0C203CEOMDTu3Dk1FlqW3Rga40jzHL4hfg=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250321113749-937c80afa12b h1:UJzgm2GBCOxgo8iPXEsdpow1YmDnoW8Z1E43w1OvDUk=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250321113749-937c80afa12b/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250321124303-497d3436954c h1:CKhUz6CixhtZOH6P4Q6OzQSC/q1+n9dNQyjL/uiC29M=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250321124303-497d3436954c/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250322043729-689dccf6187f h1:Lm83TKhafYHX0Ah8fS7sPqjPIapBge8bZ5yJpcnv41g=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250322043729-689dccf6187f/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250322051853-d6c6ca77d5e5 h1:5zJmci5ODHSFH5042TMTA/w+EP5H59xOt6TEjYaGeX0=
-github.com/AthulKrishna2501/proto-repo v0.0.0-20250322051853-d6c6ca77d5e5/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
 github.com/AthulKrishna2501/proto-repo v0.0.0-20250322103942-7b9e83f28b15 h1:8OcAsL3C5QENBurvomZZIa/v09ZVg2GQU06hrPMxCZI=
 github.com/AthulKrishna2501/proto-repo v0.0.0-20250322103942-7b9e83f28b15/go.mod h1:GWbsRPmNAwNoRNnUqXP1yaIv6dgM+WRkFcOeXnQOqK0=
 github.com/bsm/ginkgo/v2 v2.12.0 h1:Ny8MWAHyOepLGlLKYmXG4IEkioBysk6GpaRTLC8zwWs=
