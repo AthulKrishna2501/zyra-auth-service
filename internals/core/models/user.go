@@ -8,7 +8,6 @@ import (
 
 type User struct {
 	ID              uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	UserID          uuid.UUID `gorm:"type:uuid;unique;not null"`
 	Email           string    `gorm:"type:varchar(255);unique;not null"`
 	Password        string    `gorm:"type:text;not null"`
 	Role            string    `gorm:"type:varchar(50);not null;check:role IN ('vendor', 'client', 'admin')"`
@@ -19,6 +18,8 @@ type User struct {
 	Status          string    `gorm:"type:varchar(255);default:'pending'"`
 	CreatedAt       time.Time `gorm:"default:now()"`
 	UpdatedAt       time.Time `gorm:"default:now()"`
+
+	UserDetails *UserDetails `gorm:"foreignKey:UserID;references:ID"`
 }
 
 type UserDetails struct {
@@ -30,5 +31,5 @@ type UserDetails struct {
 	Phone              string    `gorm:"type:varchar(20)"`
 	MasterOfCeremonies bool      `gorm:"default:false"`
 
-	User User `gorm:"foreignKey:UserID;references:UserID;constraint:OnDelete:CASCADE"`
+	User *User `gorm:"foreignKey:UserID;references:ID;constraint:OnDelete:CASCADE"`
 }

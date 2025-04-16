@@ -99,7 +99,7 @@ func ConnectDatabase(env config.Config) *gorm.DB {
 
 func AutoMigrate(db *gorm.DB) error {
 	return db.AutoMigrate(
-		models.UserDetails{},
 		models.User{},
+		models.UserDetails{},
 	)
 }

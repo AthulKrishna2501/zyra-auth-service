@@ -18,7 +18,6 @@ import (
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/repository"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/logger"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"golang.org/x/oauth2"
@@ -53,25 +52,22 @@ func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*p
 
 	hashedPassword, _ := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 
-	userID := uuid.New()
-
-	userDetails := &models.UserDetails{
-		UserID:    userID,
-		FirstName: req.Name,
-	}
-
-	if err := s.userRepo.CreateUserDetails(userDetails); err != nil {
-		return nil, err
-	}
-
 	newUser := &models.User{
-		UserID:   userID,
 		Email:    req.Email,
 		Password: string(hashedPassword),
 		Role:     req.Role,
 	}
 
 	if err := s.userRepo.CreateUser(newUser); err != nil {
+		return nil, err
+	}
+
+	userDetails := &models.UserDetails{
+		UserID:    newUser.ID,
+		FirstName: req.Name,
+	}
+
+	if err := s.userRepo.CreateUserDetails(userDetails); err != nil {
 		return nil, err
 	}
 
@@ -230,13 +226,13 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 		return nil, status.Error(codes.Unauthenticated, "Invalid Role")
 	}
 
-	accessToken, refreshToken, err := middleware.GenerateTokens(user.UserID.String(), user.Role)
-	s.log.Info("UserID in GenerateToken function :", user.UserID.String())
+	accessToken, refreshToken, err := middleware.GenerateTokens(user.ID.String(), user.Role)
+	s.log.Info("UserID in GenerateToken function :", user.ID.String())
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to generate tokens")
 	}
 
-	err = s.redisClient.Set(ctx, user.UserID.String(), refreshToken, 7*24*time.Hour).Err()
+	err = s.redisClient.Set(ctx, user.ID.String(), refreshToken, 7*24*time.Hour).Err()
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "Failed to store refresh token")
 	}
