@@ -11,13 +11,12 @@ import (
 
 var AccessTokenSecret = []byte("your-access-secret-key")
 var RefreshTokenSecret = []byte("your-refresh-secret-key")
-var ctx = context.Background()
 
 func GenerateTokens(userID string, role string) (string, string, error) {
 	accessClaims := jwt.MapClaims{
 		"user_id": userID,
 		"role":    role,
-		"exp":     time.Now().Add(15 * time.Minute).Unix(),
+		"exp":     time.Now().Add(7 * 24 * time.Hour).Unix(),
 	}
 	accessToken := jwt.NewWithClaims(jwt.SigningMethodHS256, accessClaims)
 	accessTokenString, err := accessToken.SignedString(AccessTokenSecret)
@@ -53,7 +52,7 @@ func BlacklistToken(tokenString string, expiryTime int64, redisClient *redis.Cli
 
 	duration := time.Until(time.Unix(expiryTime, 0))
 	if duration <= 0 {
-		duration = time.Minute 
+		duration = time.Minute
 	}
 
 	err := redisClient.Set(ctx, "blacklist:"+tokenString, "revoked", duration).Err()

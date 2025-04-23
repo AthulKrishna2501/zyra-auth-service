@@ -7,8 +7,8 @@ import (
 )
 
 type User struct {
-	ID              uuid.UUID `gorm:"type:uuid;primaryKey;default:gen_random_uuid()"`
-	UserID          uuid.UUID `gorm:"type:uuid;not null;uniqueIndex"`
+	ID              uuid.UUID `gorm:"type:uuid;default:gen_random_uuid()"`
+	UserID          uuid.UUID `gorm:"type:uuid;primaryKey;not null;uniqueIndex"`
 	Email           string    `gorm:"type:varchar(255);unique;not null"`
 	Password        string    `gorm:"type:text;not null"`
 	Role            string    `gorm:"type:varchar(50);not null;check:role IN ('vendor', 'client', 'admin')"`
