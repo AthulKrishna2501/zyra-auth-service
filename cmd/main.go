@@ -15,8 +15,6 @@ import (
 func main() {
 	log := logger.NewLogrusLogger()
 
-	config.LoadEnv()
-
 	config.InitRedis()
 
 	configEnv, err := config.LoadConfig()
@@ -45,7 +43,7 @@ func main() {
 
 	userRepo := repository.NewUserRepository(db)
 
-	err = grpc.StartgRPCServer(userRepo, log, rabbitMQ, log)
+	err = grpc.StartgRPCServer(userRepo, log, rabbitMQ, log, configEnv)
 
 	if err != nil {
 		log.Error("Failed to start gRPC server", err)

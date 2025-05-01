@@ -4,6 +4,7 @@ import (
 	"net"
 
 	"github.com/AthulKrishna2501/proto-repo/auth"
+	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/config"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/events"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/repository"
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/core/services"
@@ -11,7 +12,7 @@ import (
 	"google.golang.org/grpc"
 )
 
-func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabbitMQ *events.RabbitMq, logger logger.Logger) error {
+func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabbitMQ *events.RabbitMq, logger logger.Logger,config config.Config) error {
 	go func() {
 		lis, err := net.Listen("tcp", ":5001")
 		if err != nil {
@@ -20,7 +21,7 @@ func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabb
 		}
 
 		grpcServer := grpc.NewServer()
-		authService := services.NewAuthService(UserRepo, rabbitMQ, logger)
+		authService := services.NewAuthService(UserRepo, rabbitMQ, logger,config)
 		auth.RegisterAuthServiceServer(grpcServer, authService)
 
 		log.Info("gRPC Server started on port 3001")

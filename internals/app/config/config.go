@@ -12,8 +12,8 @@ type Config struct {
 	PORT           string `mapstructure:"PORT"`
 	DB_URL         string `mapstructure:"DB_URL"`
 	JWT_SECRET_KEY string `mapstructure:"JWT_SECRET_KEY"`
-	EMAIL_ADDRES   string `mapstructure:"EMAIL_ADDRES"`
-	EMAIL_PASSWORD string `mapstructure:"EMAIL_PASSWORD"`
+	EMAIL_ADDRES   string `mapstructure:"ADMIN_EMAIL"`
+	EMAIL_PASSWORD string `mapstructure:"ADMIN_PASSWORD"`
 	RABBITMQ_URL   string `mapstructure:"RABBITMQ_URL"`
 	OAUTH_ID      string `mapstructure:"OAUTH_ID  "`
 	OAUTH_SECRET  string `mapstructure:"OAUTH_SECRET"`

@@ -35,10 +35,11 @@ type AuthService struct {
 	rabbitMq    *events.RabbitMq
 	Oauth       *oauth2.Config
 	log         logger.Logger
+	cfg         config.Config
 }
 
-func NewAuthService(userRepo repository.UserRepository, rabbitMq *events.RabbitMq, logger logger.Logger) *AuthService {
-	return &AuthService{userRepo: userRepo, redisClient: config.RedisClient, rabbitMq: rabbitMq, log: logger}
+func NewAuthService(userRepo repository.UserRepository, rabbitMq *events.RabbitMq, logger logger.Logger, cfg config.Config) *AuthService {
+	return &AuthService{userRepo: userRepo, redisClient: config.RedisClient, rabbitMq: rabbitMq, log: logger, cfg: cfg}
 }
 
 func (s *AuthService) Register(ctx context.Context, req *pb.RegisterRequest) (*pb.RegisterResponse, error) {
@@ -185,8 +186,8 @@ func (s *AuthService) ResendOTP(ctx context.Context, req *pb.ResendOTPRequest) (
 }
 
 func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.LoginResponse, error) {
-	adminEmail := os.Getenv("ADMIN_EMAIL")
-	adminPassword := os.Getenv("ADMIN_PASSWORD")
+	adminEmail := s.cfg.EMAIL_ADDRES
+	adminPassword := s.cfg.EMAIL_PASSWORD
 
 	if req.Email == adminEmail && req.Role == "admin" {
 		if req.Password != adminPassword {
