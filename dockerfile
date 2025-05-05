@@ -1,13 +1,13 @@
-FROM golang:1.24
+# syntax=docker/dockerfile:1
+FROM golang:1.24 AS builder
 
 WORKDIR /app
-
 COPY . .
+RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd
 
-RUN go mod tidy
-
-RUN go build -o auth-service ./cmd
-
-EXPOSE 5002
-
-CMD ["./auth-service"]
+# Final image
+FROM alpine:3.18  
+WORKDIR /root/
+COPY --from=builder /app/main .
+EXPOSE 5001
+CMD ["./main"]
