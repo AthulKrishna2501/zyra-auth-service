@@ -23,6 +23,8 @@ func main() {
 		return
 	}
 
+	log.Info("DB URL IN AUTH MAIN:", configEnv.DB_URL)
+
 	rabbitMQ, err := events.NewRabbitMq(configEnv.RABBITMQ_URL)
 	if err != nil {
 		log.Error("Could not connect to RabbitMQ:", err)
