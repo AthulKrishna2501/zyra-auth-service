@@ -21,6 +21,7 @@ type Config struct {
 	RABBITMQ_URL   string `mapstructure:"RABBITMQ_URL"`
 	OAUTH_ID       string `mapstructure:"OAUTH_ID  "`
 	OAUTH_SECRET   string `mapstructure:"OAUTH_SECRET"`
+	SECRET_NAME    string `mapstructure:"SECRET_NAME"`
 }
 
 func LoadConfig() (cfg Config, err error) {
@@ -47,7 +48,7 @@ func LoadConfig() (cfg Config, err error) {
 	log.Println("Falling back to AWS Secrets Manager for configuration")
 	secretName := os.Getenv("SECRET_NAME")
 	if secretName == "" {
-		secretName = "zyra/prod/api-gateway/env"
+		secretName = "zyra/prod/auth-service/env"
 	}
 
 	err = loadFromSecretsManager(&cfg, secretName)
