@@ -28,7 +28,7 @@ jobs:
     # Step 3: Build and Push Docker Images to Docker Hub
     - name: Build and Push Docker Images
       run: |
-        SERVICES="zyra-api-gateway zyra-auth-service zyra-client-service zyra-admin-service zyra-msg-service zyra-vendor-service"
+        SERVICES="zyra-moments-api-gateway zyra-moments-auth-service zyra-moments-client-service zyra-moments-admin-service zyra-moments-msg-service zyra-moments-vendor-service"
         for SERVICE in $SERVICES; do
           echo "Building $SERVICE"
           docker build -t $DOCKERHUB_USERNAME/$SERVICE:latest .
