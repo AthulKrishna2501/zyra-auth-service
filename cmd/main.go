@@ -53,7 +53,7 @@ func main() {
 	}
 
 	router := gin.Default()
-	log.Info("HTTP Server started on port 5002")
+	log.Info("HTTP Server started on port 3001")
 	router.Run(":3001")
 
 }
