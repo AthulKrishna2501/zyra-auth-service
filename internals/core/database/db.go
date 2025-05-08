@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 	"time"
 
 	"github.com/AthulKrishna2501/zyra-auth-service/internals/app/config"
@@ -81,19 +82,28 @@ func StartMonitoring(db *sql.DB, interval time.Duration) {
 }
 
 func ConnectDatabase(env config.Config) *gorm.DB {
-	db, err := gorm.Open(postgres.Open(env.DB_URL), &gorm.Config{})
+	dbURL := env.DB_URL
+	if dbURL == "" {
+		dbURL = os.Getenv("DB_URL")
+		if dbURL == "" {
+			log.Fatal("DB_URL is not set in config or environment variables")
+		}
+	}
+	log.Printf("Attempting to connect to database with DB_URL: %s", dbURL)
+
+	db, err := gorm.Open(postgres.Open(dbURL), &gorm.Config{})
 	if err != nil {
-		log.Fatal("Failed to connect to database", err)
+		log.Fatalf("Failed to connect to database: %v", err)
 		return nil
 	}
 
 	err = AutoMigrate(db)
 	if err != nil {
-		log.Fatal("Error in automigration", err)
+		log.Fatalf("Error in automigration: %v", err)
 		return nil
-
 	}
 
+	log.Println("Successfully connected to database")
 	return db
 }
 

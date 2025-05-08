@@ -13,15 +13,15 @@ import (
 )
 
 type Config struct {
-	PORT           string `mapstructure:"PORT"`
-	DB_URL         string `mapstructure:"DB_URL"`
-	JWT_SECRET_KEY string `mapstructure:"JWT_SECRET_KEY"`
-	EMAIL_ADDRES   string `mapstructure:"ADMIN_EMAIL"`
-	EMAIL_PASSWORD string `mapstructure:"ADMIN_PASSWORD"`
-	RABBITMQ_URL   string `mapstructure:"RABBITMQ_URL"`
-	OAUTH_ID       string `mapstructure:"OAUTH_ID  "`
-	OAUTH_SECRET   string `mapstructure:"OAUTH_SECRET"`
-	SECRET_NAME    string `mapstructure:"SECRET_NAME"`
+	PORT           string `mapstructure:"PORT" json:"PORT"`
+	DB_URL         string `mapstructure:"DB_URL" json:"DB_URL"`
+	JWT_SECRET_KEY string `mapstructure:"JWT_SECRET_KEY" json:"JWT_SECRET_KEY"`
+	EMAIL_ADDRES   string `mapstructure:"ADMIN_EMAIL" json:"ADMIN_EMAIL"`
+	EMAIL_PASSWORD string `mapstructure:"ADMIN_PASSWORD" json:"ADMIN_PASSWORD"`
+	RABBITMQ_URL   string `mapstructure:"RABBITMQ_URL" json:"RABBITMQ_URL"`
+	OAUTH_ID       string `mapstructure:"OAUTH_ID" json:"OAUTH_ID"`
+	OAUTH_SECRET   string `mapstructure:"OAUTH_SECRET" json:"OAUTH_SECRET"`
+	SECRET_NAME    string `mapstructure:"SECRET_NAME" json:"SECRET_NAME"`
 }
 
 func LoadConfig() (cfg Config, err error) {
@@ -37,12 +37,19 @@ func LoadConfig() (cfg Config, err error) {
 			log.Printf("Loaded configuration from %s", path)
 			loaded = true
 			break
+		} else {
+			log.Printf("Failed to load %s: %v", path, err)
 		}
 	}
 
 	if loaded {
 		err = viper.Unmarshal(&cfg)
-		return cfg, err
+		if err != nil {
+			log.Printf("Failed to unmarshal config from env: %v", err)
+			return cfg, err
+		}
+		log.Printf("Config loaded from env: %+v", cfg)
+		return cfg, nil
 	}
 
 	log.Println("Falling back to AWS Secrets Manager for configuration")
@@ -50,9 +57,15 @@ func LoadConfig() (cfg Config, err error) {
 	if secretName == "" {
 		secretName = "zyra/prod/auth-service/env"
 	}
+	log.Printf("Using secret name: %s", secretName)
 
 	err = loadFromSecretsManager(&cfg, secretName)
-	return cfg, err
+	if err != nil {
+		log.Printf("Failed to load config from Secrets Manager: %v", err)
+		return cfg, err
+	}
+	log.Printf("Config loaded from Secrets Manager: %+v", cfg)
+	return cfg, nil
 }
 
 func loadFromSecretsManager(cfg *Config, secretName string) error {
@@ -60,6 +73,7 @@ func loadFromSecretsManager(cfg *Config, secretName string) error {
 
 	awsCfg, err := config.LoadDefaultConfig(ctx)
 	if err != nil {
+		log.Printf("Failed to load AWS config: %v", err)
 		return err
 	}
 
@@ -69,8 +83,11 @@ func loadFromSecretsManager(cfg *Config, secretName string) error {
 		SecretId: aws.String(secretName),
 	})
 	if err != nil {
+		log.Printf("Failed to get secret value: %v", err)
 		return err
 	}
 
-	return json.Unmarshal([]byte(*result.SecretString), cfg)
+	secretString := *result.SecretString
+	log.Printf("Retrieved secret: %s", secretString)
+	return json.Unmarshal([]byte(secretString), cfg)
 }
