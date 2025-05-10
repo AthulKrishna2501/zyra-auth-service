@@ -6,8 +6,9 @@ COPY . .
 RUN CGO_ENABLED=0 GOOS=linux go build -o main ./cmd
 
 # Final image
-FROM alpine:3.18  
+FROM alpine:3.18
+RUN apk add --no-cache ca-certificates
 WORKDIR /root/
 COPY --from=builder /app/main .
-EXPOSE 5001
+EXPOSE 5001 50051
 CMD ["./main"]

@@ -21,6 +21,7 @@ type Config struct {
 	RABBITMQ_URL   string `mapstructure:"RABBITMQ_URL" json:"RABBITMQ_URL"`
 	OAUTH_ID       string `mapstructure:"OAUTH_ID" json:"OAUTH_ID"`
 	OAUTH_SECRET   string `mapstructure:"OAUTH_SECRET" json:"OAUTH_SECRET"`
+	CALLBACK_URL   string `mapstructure:"CALLBACK_URL"`
 	SECRET_NAME    string `mapstructure:"SECRET_NAME" json:"SECRET_NAME"`
 }
 

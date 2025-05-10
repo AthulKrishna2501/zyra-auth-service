@@ -12,23 +12,22 @@ import (
 	"google.golang.org/grpc"
 )
 
-func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabbitMQ *events.RabbitMq, logger logger.Logger,config config.Config) error {
-	go func() {
-		lis, err := net.Listen("tcp", ":5001")
-		if err != nil {
-			log.Error("Failed to listen on port 5001: %v", err)
-			return
-		}
+func StartgRPCServer(UserRepo repository.UserRepository, log logger.Logger, rabbitMQ *events.RabbitMq, logger logger.Logger, config config.Config) error {
 
-		grpcServer := grpc.NewServer()
-		authService := services.NewAuthService(UserRepo, rabbitMQ, logger,config)
-		auth.RegisterAuthServiceServer(grpcServer, authService)
+	lis, err := net.Listen("tcp", ":50051")
+	if err != nil {
+		log.Error("Failed to listen on port 50051: %v", err)
+		return err
+	}
 
-		log.Info("gRPC Server started on port 3001")
-		if err := grpcServer.Serve(lis); err != nil {
-			log.Error("Failed to serve gRPC: %v", err)
-		}
-	}()
+	grpcServer := grpc.NewServer()
+	authService := services.NewAuthService(UserRepo, rabbitMQ, logger, config)
+	auth.RegisterAuthServiceServer(grpcServer, authService)
+
+	log.Info("gRPC Server started on port 50051")
+	if err := grpcServer.Serve(lis); err != nil {
+		log.Error("Failed to serve gRPC: %v", err)
+	}
 
 	return nil
 }

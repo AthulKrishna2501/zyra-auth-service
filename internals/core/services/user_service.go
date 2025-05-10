@@ -2,11 +2,9 @@ package services
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"io"
 	"net/http"
-	"os"
 	"time"
 
 	pb "github.com/AthulKrishna2501/proto-repo/auth"
@@ -251,12 +249,16 @@ func (s *AuthService) Login(ctx context.Context, req *pb.LoginRequest) (*pb.Logi
 }
 
 func (s *AuthService) GoogleLogin(ctx context.Context, req *pb.GoogleLoginRequest) (*pb.GoogleLoginResponse, error) {
+	s.log.Info("Client ID for google login :", s.cfg.OAUTH_ID)
 	s.Oauth = &oauth2.Config{
-		RedirectURL:  "http://localhost:3000/auth/callback",
-		ClientID:     os.Getenv("OAUTH_ID"),
-		ClientSecret: os.Getenv("OAUTH_SECRET"),
-		Scopes:       []string{"email", "profile"},
-		Endpoint:     google.Endpoint,
+		RedirectURL:  s.cfg.CALLBACK_URL,
+		ClientID:     s.cfg.OAUTH_ID,
+		ClientSecret: s.cfg.OAUTH_SECRET,
+		Scopes: []string{
+			"https://www.googleapis.com/auth/userinfo.email",
+			"https://www.googleapis.com/auth/userinfo.profile",
+			"openid",
+		}, Endpoint: google.Endpoint,
 	}
 
 	url := s.Oauth.AuthCodeURL("state", oauth2.AccessTypeOffline)
@@ -276,30 +278,25 @@ func (s *AuthService) HandleGoogleCallback(c context.Context, req *pb.GoogleCall
 	}
 
 	t, err := s.Oauth.Exchange(context.Background(), req.Code)
-
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to exchange token")
-
 	}
 
 	httpReq, err := http.NewRequest("GET", "https://www.googleapis.com/oauth2/v2/userinfo", nil)
 	if err != nil {
-		return nil, status.Error(codes.Internal, "Failed to get user info "+err.Error())
+		return nil, status.Error(codes.Internal, "Failed to get user info: "+err.Error())
 	}
-
 	httpReq.Header.Set("Authorization", "Bearer "+t.AccessToken)
 
 	resp, err := client.Do(httpReq)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to fetch user info: "+err.Error())
 	}
-
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to read response")
-
 	}
 
 	var userInfo struct {
@@ -311,43 +308,45 @@ func (s *AuthService) HandleGoogleCallback(c context.Context, req *pb.GoogleCall
 		return nil, status.Error(codes.Internal, "Failed to parse user info: "+err.Error())
 	}
 
-	user, err := s.userRepo.FindUserByEmail(userInfo.Email)
-	if err != nil && err != sql.ErrNoRows {
-		return nil, status.Error(codes.Internal, "Failed to check user: "+err.Error())
+	var user *models.User
+
+	userID := uuid.New()
+
+	newUserDetails := &models.UserDetails{
+		UserID: userID,
 	}
+
+	err = s.userRepo.CreateUserDetails(newUserDetails)
+	if err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create user details: "+err.Error())
+	}
+
+	newUser := &models.User{
+		UserID:      userID,
+		Email:       userInfo.Email,
+		SSOProvider: "Google",
+		SSOUserID:   userInfo.ID,
+		Role:        "client",
+	}
+	if err := s.userRepo.CreateUser(newUser); err != nil {
+		return nil, status.Error(codes.Internal, "Failed to create user: "+err.Error())
+	}
+	user = newUser
 
 	if err := s.userRepo.UpdateField(user.Email, "sso_provider", "Google"); err != nil {
-		return nil, status.Error(codes.Internal, "Failed to update field for SSO")
-	}
-
-	if user == nil {
-		newUser := models.User{
-			Email:       userInfo.Email,
-			SSOProvider: "Google",
-			SSOUserID:   userInfo.ID,
-			Role:        "client",
-		}
-		if err := s.userRepo.CreateUser(&newUser); err != nil {
-			return nil, status.Error(codes.Internal, "Failed to create user: "+err.Error())
-		}
-	}
-
-	if err := s.userRepo.UpdateField(userInfo.Email, "sso_provider", "Google"); err != nil {
-		return nil, status.Error(codes.Internal, "Failed to update SSO field")
+		return nil, status.Error(codes.Internal, "Failed to update SSO field: "+err.Error())
 	}
 
 	accessToken, refreshToken, err := middleware.GenerateTokens(user.ID.String(), user.Role)
-
 	if err != nil {
 		return nil, status.Error(codes.Internal, "Failed to generate JWT Token")
 	}
 
 	return &pb.GoogleCallbackResponse{
-		Message:      "User Login Successfull",
+		Message:      "User Login Successful",
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 	}, nil
-
 }
 
 func (s *AuthService) Logout(ctx context.Context, req *pb.LogoutRequest) (*pb.LogoutResponse, error) {

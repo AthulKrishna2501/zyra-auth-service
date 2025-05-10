@@ -23,8 +23,6 @@ func main() {
 		return
 	}
 
-	log.Info("DB URL IN AUTH MAIN:", configEnv.DB_URL)
-
 	rabbitMQ, err := events.NewRabbitMq(configEnv.RABBITMQ_URL)
 	if err != nil {
 		log.Error("Could not connect to RabbitMQ:", err)
@@ -53,7 +51,7 @@ func main() {
 	}
 
 	router := gin.Default()
-	log.Info("HTTP Server started on port 3001")
-	router.Run(":3001")
+	log.Info("HTTP Server started on port 5001")
+	router.Run(":5001")
 
 }

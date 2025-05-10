@@ -27,10 +27,7 @@ func NewUserRepository(db *gorm.DB) *UserStorage {
 }
 
 func (repo *UserStorage) CreateUser(user *models.User) error {
-	if err := repo.DB.Create(user).Error; err != nil {
-		return errors.New("failed to create user: " + err.Error())
-	}
-	return nil
+	return repo.DB.Create(user).Error
 }
 
 func (repo *UserStorage) FindUser(field string, value interface{}) (*models.User, error) {
